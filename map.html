@@ -197,8 +197,10 @@ const S = {
 // ═══════════════════════════════════════════════════════
 const INDICATORS = {
   economy: [
-    { id:"gdp_per_capita_pps", label:"GDP per capita", unit:"PPS (EU27=100)", layer:"both" },
-    { id:"employment_rate", label:"Employment Rate", unit:"%", layer:"both" },
+    { id:"gdp_per_capita_pps", label:"GDP per capita (NUTS3)", unit:"PPS", layer:"both" },
+    { id:"employment_rate", label:"Employment Rate (NUTS3)", unit:"%", layer:"both" },
+    { id:"econ_potential", label:"Economic Potential Index", unit:"score", layer:"municipality" },
+    { id:"econ_proximity", label:"Proximity to Regional Capital", unit:"score", layer:"municipality" },
   ],
   demographics: [
     { id:"population", label:"Population", unit:"persons", layer:"both" },
@@ -207,10 +209,17 @@ const INDICATORS = {
     { id:"pop_density", label:"Population Density", unit:"/km²", layer:"municipality" },
   ],
   education: [
-    { id:"tertiary_edu_pct", label:"Tertiary Education", unit:"%", layer:"both" },
+    { id:"tertiary_edu_pct", label:"Tertiary Education (NUTS3)", unit:"%", layer:"both" },
+    { id:"edu_access_score", label:"Education Access Score", unit:"score", layer:"municipality" },
+    { id:"edu_infra_score", label:"Education Infrastructure Score", unit:"score", layer:"municipality" },
   ],
   infrastructure: [
-    { id:"broadband_pct", label:"Broadband Penetration", unit:"%", layer:"both" },
+    { id:"broadband_pct", label:"Broadband Penetration (NUTS3)", unit:"%", layer:"both" },
+    { id:"connectivity_score", label:"Overall Connectivity Score", unit:"score", layer:"municipality" },
+    { id:"transport_score", label:"Transport Connectivity", unit:"score", layer:"municipality" },
+    { id:"dist_motorway_km", label:"Distance to Nearest Motorway", unit:"km", layer:"municipality" },
+    { id:"dist_railway_km", label:"Distance to Railway Station", unit:"km", layer:"municipality" },
+    { id:"remoteness_index", label:"Remoteness Index", unit:"score", layer:"municipality" },
   ],
 };
 
@@ -237,7 +246,7 @@ async function load() {
   const [lauGeo, nuts3Geo, muniCSV, nuts3CSV] = await Promise.all([
     fetch("data/slovakia_lau.geojson").then(r => r.json()),
     fetch("data/slovakia_nuts3.geojson").then(r => r.json()),
-    fetch("data/municipality_stats.csv").then(r => r.text()).then(t => d3.csvParse(t, d3.autoType)),
+    fetch("data/municipality_stats_enriched.csv").then(r => r.text()).then(t => d3.csvParse(t, d3.autoType)),
     fetch("data/nuts3_stats.csv").then(r => r.text()).then(t => d3.csvParse(t, d3.autoType)),
   ]);
 
@@ -259,6 +268,18 @@ async function load() {
         pop_density: p.POP_DENS_2024 ?? mc.pop_density,
         population: n3.population ?? p.POP_2024,
         lau_id: lauId,
+        // Ensure enriched numeric fields are available
+        econ_potential: mc.econ_potential ?? null,
+        econ_proximity: mc.econ_proximity ?? null,
+        edu_access_score: mc.edu_access_score ?? null,
+        edu_infra_score: mc.edu_infra_score ?? null,
+        connectivity_score: mc.connectivity_score ?? null,
+        transport_score: mc.transport_score ?? null,
+        dist_motorway_km: mc.dist_motorway_km ?? null,
+        dist_railway_km: mc.dist_railway_km ?? null,
+        remoteness_index: mc.remoteness_index ?? null,
+        dist_capital_km: mc.dist_capital_km ?? null,
+        dist_uni_km: mc.dist_uni_km ?? null,
       }
     };
   });
@@ -462,26 +483,36 @@ function handleMouseEnter(event, d) {
       ["Broadband", p.broadband_pct, "%"],
     ].map(([l,v,u]) => `<div class="row"><span class="lbl">${l}</span><span class="val">${v!=null?v+u:"N/A"}</span></div>`).join("");
   } else {
-    // Municipality tooltip — always show local data + NUTS3 regional context
+    // Municipality tooltip — enriched local data + NUTS3 regional context
     const indicatorLabel = (INDICATORS[S.category]||[]).find(d=>d.id===S.indicator)?.label || "";
     const indicatorUnit = (INDICATORS[S.category]||[]).find(d=>d.id===S.indicator)?.unit || "";
     const indicatorVal = p[S.indicator];
     rows = [
       indicatorVal != null
-        ? [indicatorLabel, fmt(indicatorVal), " "+indicatorUnit]
+        ? [indicatorLabel, indicatorUnit==="score" ? indicatorVal : fmt(indicatorVal), " "+indicatorUnit]
         : null,
       ["Population", p.POP_2024, ""],
       ["Density", p.POP_DENS_2024, "/km²"],
       ["Area", p.AREA_KM2, "km²"],
-      indicatorVal != null ? ["─ Region Context ─", "", ""] : null,
+      ["─ Accessibility ─", "", ""],
+      ["→ Motorway", p.dist_motorway_km, " km"],
+      ["→ Railway", p.dist_railway_km, " km"],
+      ["→ Capital", p.dist_capital_km, " km"],
+      ["→ University", p.dist_uni_km, " km"],
+      ["─ Scores (0-100) ─", "", ""],
+      ["Econ. Potential", p.econ_potential, ""],
+      ["Econ. Proximity", p.econ_proximity, ""],
+      ["Edu. Access", p.edu_access_score, ""],
+      ["Transport", p.transport_score, ""],
+      ["Connectivity", p.connectivity_score, ""],
+      ["─ Region Context ─", "", ""],
       ["GDP/capita", p.gdp_per_capita_pps, " PPS"],
       ["Employment", p.employment_rate, "%"],
       ["Tertiary Edu", p.tertiary_edu_pct, "%"],
       ["Broadband", p.broadband_pct, "%"],
     ].filter(r=>r).map(([l,v,u]) => {
       const isSep = l && l.startsWith("─");
-      const cls = isSep ? 'row' : 'row';
-      return `<div class="${cls}"><span class="lbl"${isSep?' style="color:#6b7280;font-size:0.65rem;letter-spacing:0.05em;text-transform:uppercase;"':''}>${l}</span><span class="val">${isSep?'':(v!=null?(typeof v==="number"?fmt(v):v)+u:"N/A")}</span></div>`;
+      return `<div class="row"><span class="lbl"${isSep?' style="color:#6b7280;font-size:0.65rem;letter-spacing:0.05em;text-transform:uppercase;"':''}>${l}</span><span class="val">${isSep?'':(v!=null?(typeof v==="number"?fmt(v):v)+u:"N/A")}</span></div>`;
     }).join("");
   }
 
