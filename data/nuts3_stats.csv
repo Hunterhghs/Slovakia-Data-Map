@@ -1,0 +1,9 @@
+nuts3_id,name,nuts2_id,gdp_per_capita_pps,gdp_year,employment_rate,emp_year,population,pop_year,youth_pct,elderly_pct,tertiary_edu_pct,edu_year,broadband_pct,bb_year,rd_expenditure_pct,rd_year
+SK010,Bratislavský kraj,SK01,153,2024,78.7,2025,736385,2025,16.7,18.7,54.8,2025,96.14,2021,,N/A
+SK021,Trnavský kraj,SK02,82,2024,74.2,2025,565900,2025,14.7,19.3,25.0,2025,89.38,2021,,N/A
+SK022,Trenčiansky kraj,SK02,61,2024,74.2,2025,565572,2025,14.0,21.0,25.0,2025,89.38,2021,,N/A
+SK023,Nitriansky kraj,SK02,68,2024,74.2,2025,665600,2025,13.7,20.6,25.0,2025,89.38,2021,,N/A
+SK031,Žilinský kraj,SK03,67,2024,73.6,2025,686063,2025,15.7,18.1,25.8,2025,90.51,2021,,N/A
+SK032,Banskobystrický kraj,SK03,57,2024,73.6,2025,611124,2025,14.7,19.9,25.8,2025,90.51,2021,,N/A
+SK041,Prešovský kraj,SK04,46,2024,66.3,2025,810008,2025,18.3,16.5,26.7,2025,87.04,2021,,N/A
+SK042,Košický kraj,SK04,62,2024,66.3,2025,778799,2025,17.2,17.5,26.7,2025,87.04,2021,,N/A

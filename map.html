@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slovakia Interactive Map — H Heuristics</title>
+<style>
+  :root {
+    --bg: #0b1120;
+    --surface: #111827;
+    --surface2: #1f2937;
+    --border: #374151;
+    --text: #f1f5f9;
+    --text2: #9ca3af;
+    --text3: #6b7280;
+    --cat-economy: #f59e0b;
+    --cat-demographics: #10b981;
+    --cat-education: #8b5cf6;
+    --cat-infrastructure: #3b82f6;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    overflow: hidden; height: 100vh;
+    display: flex; flex-direction: column;
+  }
+
+  /* HEADER */
+  header {
+    background: rgba(17,24,39,0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-shrink: 0; z-index: 20;
+  }
+  .brand { display:flex; align-items:center; gap:8px; }
+  .brand .flag { font-size:1.3rem; }
+  .brand h1 { font-size:1.05rem; font-weight:700; letter-spacing:-0.01em; white-space:nowrap; }
+  .brand h1 span { color: #38bdf8; }
+  .controls { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+
+  /* CATEGORY PILLS */
+  .cat-group { display:flex; gap:2px; background:var(--surface2); border-radius:9px; padding:2px; }
+  .cat-btn {
+    padding:6px 13px; border-radius:7px; border:none; cursor:pointer;
+    font-size:0.75rem; font-weight:600; color:var(--text3);
+    background:transparent; transition:all 0.2s; white-space:nowrap;
+  }
+  .cat-btn:hover { color:var(--text); }
+  .cat-btn.active { color:#fff; }
+  .cat-btn[data-cat="economy"].active { background:var(--cat-economy); }
+  .cat-btn[data-cat="demographics"].active { background:var(--cat-demographics); }
+  .cat-btn[data-cat="education"].active { background:var(--cat-education); }
+  .cat-btn[data-cat="infrastructure"].active { background:var(--cat-infrastructure); }
+
+  /* LAYER TOGGLE */
+  .layer-group { display:flex; gap:2px; background:var(--surface2); border-radius:9px; padding:2px; }
+  .layer-btn {
+    padding:6px 13px; border-radius:7px; border:none; cursor:pointer;
+    font-size:0.75rem; font-weight:600; color:var(--text3);
+    background:transparent; transition:all 0.2s;
+  }
+  .layer-btn.active { background:#38bdf8; color:#fff; }
+
+  /* SEARCH */
+  .search-wrap { position:relative; }
+  .search-wrap input {
+    background:var(--surface2); border:1px solid var(--border); border-radius:8px;
+    padding:6px 12px 6px 30px; color:var(--text); font-size:0.75rem;
+    width:190px; outline:none; transition:border 0.2s;
+  }
+  .search-wrap input:focus { border-color:#38bdf8; }
+  .search-wrap input::placeholder { color:var(--text3); }
+  .search-wrap .sicon {
+    position:absolute; left:10px; top:50%; transform:translateY(-50%);
+    color:var(--text3); font-size:0.7rem; pointer-events:none;
+  }
+  .search-drop {
+    position:absolute; top:100%; left:0; right:0; margin-top:4px;
+    background:var(--surface); border:1px solid var(--border); border-radius:8px;
+    max-height:220px; overflow-y:auto; display:none; z-index:100;
+  }
+  .search-drop.open { display:block; }
+  .search-drop .item {
+    padding:8px 12px; cursor:pointer; font-size:0.75rem;
+    border-bottom:1px solid rgba(55,65,81,0.4);
+  }
+  .search-drop .item:hover { background:var(--surface2); }
+  .search-drop .item .sub { color:var(--text3); font-size:0.65rem; }
+
+  /* MAP */
+  #map { flex:1; position:relative; overflow:hidden; }
+  #map svg { display:block; }
+  #map .region { cursor:pointer; transition:stroke 0.1s, stroke-width 0.1s; }
+  #map .region:hover { stroke:#fff !important; stroke-opacity:1 !important; }
+
+  /* TOOLTIP */
+  #tooltip {
+    position:absolute; pointer-events:none;
+    background:rgba(17,24,39,0.96); border:1px solid var(--border);
+    border-radius:12px; padding:14px 16px; font-size:0.78rem;
+    max-width:280px; box-shadow:0 16px 48px rgba(0,0,0,0.6);
+    opacity:0; transition:opacity 0.15s; z-index:50;
+    backdrop-filter:blur(8px);
+  }
+  #tooltip.on { opacity:1; }
+  #tooltip h3 { font-size:0.88rem; font-weight:700; margin-bottom:2px; }
+  #tooltip .subtitle { color:var(--text2); font-size:0.68rem; margin-bottom:8px; }
+  #tooltip .row { display:flex; justify-content:space-between; padding:2.5px 0; }
+  #tooltip .row .lbl { color:var(--text2); }
+  #tooltip .row .val { font-weight:600; }
+  #tooltip .row.highlight { color:#38bdf8; }
+
+  /* LEGEND */
+  #legend {
+    position:absolute; bottom:20px; right:20px;
+    background:rgba(17,24,39,0.95); border:1px solid var(--border);
+    border-radius:10px; padding:12px 16px; font-size:0.68rem;
+    min-width:170px; z-index:10; backdrop-filter:blur(8px);
+  }
+  #legend .ltitle {
+    font-size:0.65rem; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--text2); margin-bottom:8px; font-weight:600;
+  }
+  #legend .lgrad {
+    height:8px; border-radius:4px; margin-bottom:4px;
+  }
+  #legend .llabels { display:flex; justify-content:space-between; color:var(--text2); }
+
+  /* LOADING */
+  #loading {
+    position:absolute; inset:0; display:flex; align-items:center;
+    justify-content:center; background:var(--bg); z-index:100;
+    flex-direction:column; gap:12px; transition:opacity 0.4s;
+  }
+  #loading.done { opacity:0; pointer-events:none; }
+  .spinner { width:36px; height:36px; border:3px solid var(--border); border-top-color:#38bdf8; border-radius:50%; animation:spin 0.7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  @media (max-width:768px) {
+    header { flex-direction:column; padding:8px 12px; gap:6px; }
+    .brand h1 { font-size:0.9rem; }
+    .cat-btn, .layer-btn { padding:5px 8px; font-size:0.65rem; }
+    .search-wrap input { width:130px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="flag">🇸🇰</span>
+    <h1>Slovakia <span>Interactive Map</span></h1>
+  </div>
+  <div class="controls">
+    <div class="cat-group" id="cats">
+      <button class="cat-btn" data-cat="economy">💰 Economy</button>
+      <button class="cat-btn active" data-cat="demographics">👥 Demographics</button>
+      <button class="cat-btn" data-cat="education">🎓 Education</button>
+      <button class="cat-btn" data-cat="infrastructure">🏗️ Infrastructure</button>
+    </div>
+    <div class="layer-group" id="layers">
+      <button class="layer-btn active" data-layer="municipality">Municipalities</button>
+      <button class="layer-btn" data-layer="nuts3">Regions</button>
+    </div>
+    <div class="search-wrap">
+      <span class="sicon">🔍</span>
+      <input type="text" id="search" placeholder="Search municipality…" autocomplete="off">
+      <div class="search-drop" id="searchDrop"></div>
+    </div>
+  </div>
+</header>
+
+<div id="map">
+  <div id="loading"><div class="spinner"></div><div style="color:var(--text2);font-size:0.85rem">Loading data…</div></div>
+  <div id="tooltip"></div>
+  <div id="legend"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script>
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+const S = {
+  category: "demographics",
+  layer: "municipality",
+  indicator: "pop_density",
+  searchQ: "",
+  highlighted: null,
+};
+
+// ═══════════════════════════════════════════════════════
+// INDICATOR DEFINITIONS
+// ═══════════════════════════════════════════════════════
+const INDICATORS = {
+  economy: [
+    { id:"gdp_per_capita_pps", label:"GDP per capita", unit:"PPS (EU27=100)", layer:"nuts3" },
+    { id:"employment_rate", label:"Employment Rate", unit:"%", layer:"nuts3" },
+  ],
+  demographics: [
+    { id:"population", label:"Population", unit:"persons", layer:"nuts3" },
+    { id:"youth_pct", label:"Youth (0-14)", unit:"%", layer:"nuts3" },
+    { id:"elderly_pct", label:"Elderly (65+)", unit:"%", layer:"nuts3" },
+    { id:"pop_density", label:"Population Density", unit:"/km²", layer:"municipality" },
+  ],
+  education: [
+    { id:"tertiary_edu_pct", label:"Tertiary Education", unit:"%", layer:"nuts3" },
+  ],
+  infrastructure: [
+    { id:"broadband_pct", label:"Broadband Penetration", unit:"%", layer:"nuts3" },
+  ],
+};
+
+const CAT_COLORS = {
+  economy: ["#fef3c7","#fcd34d","#f59e0b","#d97706","#92400e"],
+  demographics: ["#d1fae5","#6ee7b7","#10b981","#059669","#047857"],
+  education: ["#ede9fe","#a78bfa","#8b5cf6","#7c3aed","#5b21b6"],
+  infrastructure: ["#dbeafe","#93c5fd","#3b82f6","#2563eb","#1e40af"],
+};
+
+const CAT_HEX = {
+  economy: "#f59e0b",
+  demographics: "#10b981",
+  education: "#8b5cf6",
+  infrastructure: "#3b82f6",
+};
+
+// ═══════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════
+let DATA = null;
+
+async function load() {
+  const [lauGeo, nuts3Geo, muniCSV, nuts3CSV] = await Promise.all([
+    fetch("data/slovakia_lau.geojson").then(r => r.json()),
+    fetch("data/slovakia_nuts3.geojson").then(r => r.json()),
+    fetch("data/municipality_stats.csv").then(r => r.text()).then(t => d3.csvParse(t, d3.autoType)),
+    fetch("data/nuts3_stats.csv").then(r => r.text()).then(t => d3.csvParse(t, d3.autoType)),
+  ]);
+
+  // Build lookup
+  const nuts3Map = new Map(nuts3CSV.map(d => [d.nuts3_id, d]));
+
+  // Join NUTS3 + municipality stats onto LAU features (normalize property names)
+  const muniCSVMap = new Map(muniCSV.map(d => [String(d.lau_id), d]));
+  const muniFeats = lauGeo.features.map(f => {
+    const p = f.properties;
+    const lauId = String(p.LAU_ID || "");
+    const n3 = nuts3Map.get(p.NUTS3_ID) || {};
+    const mc = muniCSVMap.get(lauId) || {};
+    return {
+      ...f,
+      properties: {
+        ...p, ...n3, ...mc,
+        // Normalized indicator names
+        pop_density: p.POP_DENS_2024 ?? mc.pop_density,
+        population: n3.population ?? p.POP_2024,
+        lau_id: lauId,
+      }
+    };
+  });
+
+  // Join NUTS3 stats onto NUTS3 features
+  const nuts3Feats = nuts3Geo.features.map(f => {
+    const n3 = nuts3Map.get(f.properties.NUTS_ID) || {};
+    return { ...f, properties: { ...f.properties, ...n3 } };
+  });
+
+  // Build search index from municipality names
+  const searchIdx = muniFeats.map(f => ({
+    name: f.properties.LAU_NAME || "",
+    region: f.properties.NUTS3_NAME || "",
+    lauId: f.properties.LAU_ID || "",
+    feature: f,
+  }));
+
+  DATA = { muniFeats, nuts3Feats, searchIdx };
+  console.log(`✅ Loaded: ${muniFeats.length} municipalities, ${nuts3Feats.length} regions, ${searchIdx.length} searchable`);
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════
+function render() {
+  if (!DATA) return;
+  const container = document.getElementById("map");
+  const W = container.clientWidth;
+  const H = container.clientHeight;
+  if (W < 100 || H < 100) return;
+
+  // Determine features, indicator
+  const isNuts3 = S.layer === "nuts3";
+  const features = isNuts3 ? DATA.nuts3Feats : DATA.muniFeats;
+  const cat = S.category;
+  let indicatorId = S.indicator;
+
+  // Validate indicator for current layer
+  const catIndicators = INDICATORS[cat] || [];
+  const currentIndicator = catIndicators.find(d => d.id === indicatorId) || catIndicators[0];
+  if (!currentIndicator) return;
+  indicatorId = currentIndicator.id;
+
+  // Get values
+  const vals = features.map(f => {
+    const v = f.properties[indicatorId];
+    return v != null && !isNaN(v) ? +v : null;
+  }).filter(v => v != null);
+  if (vals.length === 0) return;
+  const vmin = d3.min(vals);
+  const vmax = d3.max(vals);
+
+  // Color scale
+  const colors = CAT_COLORS[cat] || CAT_COLORS.economy;
+  const colorScale = d3.scaleQuantize([vmin, vmax], colors);
+
+  // Projection
+  const allFeats = { type:"FeatureCollection", features };
+  const proj = d3.geoMercator().fitExtent([[10,10],[W-10,H-10]], allFeats);
+  const path = d3.geoPath(proj);
+
+  // Clear map
+  const existing = container.querySelector("svg.map-svg");
+  if (existing) existing.remove();
+
+  // Create SVG
+  const svg = d3.select(container)
+    .insert("svg", "#tooltip")
+    .attr("class","map-svg")
+    .attr("width",W).attr("height",H);
+
+  // Background
+  svg.append("rect").attr("width",W).attr("height",H).attr("fill","#0b1120");
+
+  // Draw features
+  const geoGroup = svg.append("g");
+  geoGroup.selectAll("path")
+    .data(features)
+    .join("path")
+    .attr("class","region")
+    .attr("d", path)
+    .attr("fill", d => {
+      const v = d.properties[indicatorId];
+      return v != null ? colorScale(v) : "#1e293b";
+    })
+    .attr("stroke","#374151")
+    .attr("stroke-width", isNuts3 ? 2 : 0.3)
+    .attr("stroke-opacity",0.5)
+    .on("mouseenter", handleMouseEnter)
+    .on("mousemove", handleMouseMove)
+    .on("mouseleave", handleMouseLeave)
+    .on("click", handleClick);
+
+  // Highlight search result
+  if (S.searchQ && S.highlighted) {
+    geoGroup.selectAll("path")
+      .filter(d => d.properties.LAU_ID === S.highlighted || d.properties.NUTS_ID === S.highlighted)
+      .attr("stroke","#fff")
+      .attr("stroke-width", isNuts3 ? 3 : 1.5)
+      .attr("stroke-opacity",1)
+      .raise();
+  }
+
+  // NUTS3 labels
+  if (isNuts3) {
+    const labelData = features.map(f => {
+      const c = path.centroid(f);
+      return { x:c[0], y:c[1], name:f.properties.NUTS_NAME || f.properties.name || "" };
+    });
+    const shorts = {
+      "Bratislavský kraj":"Bratislava","Trnavský kraj":"Trnava","Trenčiansky kraj":"Trenčín",
+      "Nitriansky kraj":"Nitra","Žilinský kraj":"Žilina","Banskobystrický kraj":"B. Bystrica",
+      "Prešovský kraj":"Prešov","Košický kraj":"Košice",
+    };
+    svg.selectAll("text.nuts3-label")
+      .data(labelData)
+      .join("text")
+      .attr("class","nuts3-label")
+      .attr("x", d => d.x).attr("y", d => d.y)
+      .attr("text-anchor","middle").attr("dy","0.35em")
+      .attr("fill","#fff").attr("font-size","0.8rem").attr("font-weight","700")
+      .attr("paint-order","stroke").attr("stroke","#0b1120").attr("stroke-width","3px")
+      .style("pointer-events","none")
+      .text(d => shorts[d.name] || d.name);
+  }
+
+  // City dots for major cities (municipality layer)
+  if (!isNuts3) {
+    const cities = DATA.muniFeats
+      .filter(f => (f.properties.POP_2024 || 0) > 20000)
+      .map(f => {
+        const c = path.centroid(f);
+        return { x:c[0], y:c[1], name:f.properties.LAU_NAME, pop:f.properties.POP_2024 };
+      });
+    svg.selectAll("circle.city")
+      .data(cities)
+      .join("circle")
+      .attr("class","city")
+      .attr("cx", d => d.x).attr("cy", d => d.y)
+      .attr("r", d => Math.max(2.5, Math.sqrt(d.pop||0)/80))
+      .attr("fill","#fff").attr("fill-opacity",0.9)
+      .attr("stroke","#0b1120").attr("stroke-width",1)
+      .style("pointer-events","none");
+
+    svg.selectAll("text.city-label")
+      .data(cities.filter(c => c.pop > 50000))
+      .join("text")
+      .attr("class","city-label")
+      .attr("x", d => d.x + 5).attr("y", d => d.y + 3)
+      .attr("fill","#fff").attr("font-size","0.6rem").attr("font-weight","600")
+      .attr("paint-order","stroke").attr("stroke","#0b1120").attr("stroke-width","2px")
+      .style("pointer-events","none")
+      .text(d => d.name);
+  }
+
+  // Legend
+  updateLegend(currentIndicator.label, vmin, vmax, currentIndicator.unit);
+}
+
+function updateLegend(label, min, max, unit) {
+  const el = document.getElementById("legend");
+  const cat = S.category;
+  const colors = CAT_COLORS[cat] || CAT_COLORS.economy;
+  el.innerHTML = `
+    <div class="ltitle" style="color:${CAT_HEX[cat]}">● ${label}</div>
+    <div class="lgrad" style="background:linear-gradient(to right, ${colors[0]}, ${colors[colors.length-1]});"></div>
+    <div class="llabels">
+      <span>${fmt(min)} ${unit}</span>
+      <span>${fmt(max)} ${unit}</span>
+    </div>
+  `;
+}
+
+function fmt(n) {
+  if (n == null) return "N/A";
+  if (Math.abs(n) >= 1e6) return (n/1e6).toFixed(1)+"M";
+  if (Math.abs(n) >= 1e3) return (n/1e3).toFixed(1)+"K";
+  return Number.isInteger(n) ? n.toString() : n.toFixed(1);
+}
+
+// ═══════════════════════════════════════════════════════
+// TOOLTIP
+// ═══════════════════════════════════════════════════════
+function handleMouseEnter(event, d) {
+  const tt = document.getElementById("tooltip");
+  const p = d.properties;
+  const isNuts3 = S.layer === "nuts3";
+  const name = isNuts3 ? (p.NUTS_NAME || p.name || "—") : (p.LAU_NAME || "—");
+  const region = isNuts3 ? "" : (p.NUTS3_NAME || "");
+
+  let rows = "";
+  if (isNuts3) {
+    rows = [
+      ["GDP per capita", p.gdp_per_capita_pps, "PPS"],
+      ["Employment Rate", p.employment_rate, "%"],
+      ["Population", p.population, ""],
+      ["Youth (0-14)", p.youth_pct, "%"],
+      ["Elderly (65+)", p.elderly_pct, "%"],
+      ["Tertiary Education", p.tertiary_edu_pct, "%"],
+      ["Broadband", p.broadband_pct, "%"],
+    ].map(([l,v,u]) => `<div class="row"><span class="lbl">${l}</span><span class="val">${v!=null?v+u:"N/A"}</span></div>`).join("");
+  } else {
+    rows = [
+      ["Population", p.POP_2024, ""],
+      ["Density", p.POP_DENS_2024, "/km²"],
+      ["Area", p.AREA_KM2, "km²"],
+    ].map(([l,v,u]) => `<div class="row"><span class="lbl">${l}</span><span class="val">${v!=null?fmt(v)+u:"N/A"}</span></div>`).join("");
+  }
+
+  tt.innerHTML = `
+    <h3>${name}</h3>
+    ${region ? `<div class="subtitle">${region}</div>` : ""}
+    ${rows}
+  `;
+  tt.classList.add("on");
+  moveTT(event);
+}
+
+function handleMouseMove(event) { moveTT(event); }
+
+function handleMouseLeave() {
+  document.getElementById("tooltip").classList.remove("on");
+}
+
+function moveTT(e) {
+  const tt = document.getElementById("tooltip");
+  const rect = document.getElementById("map").getBoundingClientRect();
+  let x = e.clientX - rect.left + 16;
+  let y = e.clientY - rect.top - 10;
+  if (x + 290 > rect.width) x = e.clientX - rect.left - 296;
+  if (y + 320 > rect.height) y = e.clientY - rect.top - 326;
+  if (x < 4) x = 4;
+  if (y < 4) y = 4;
+  tt.style.left = x + "px";
+  tt.style.top = y + "px";
+}
+
+function handleClick(event, d) {
+  // Could show a detail panel
+}
+
+// ═══════════════════════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════════════════════
+function setupSearch() {
+  const input = document.getElementById("search");
+  const drop = document.getElementById("searchDrop");
+
+  input.addEventListener("input", () => {
+    const q = input.value.trim().toLowerCase();
+    S.searchQ = q;
+    if (q.length < 2 || !DATA) {
+      drop.classList.remove("open");
+      S.highlighted = null;
+      render();
+      return;
+    }
+    const matches = DATA.searchIdx
+      .filter(d => d.name.toLowerCase().includes(q))
+      .slice(0, 10);
+    if (matches.length) {
+      drop.innerHTML = matches.map(m =>
+        `<div class="item" data-id="${m.lauId}">
+          <div>${m.name}</div>
+          <div class="sub">${m.region}</div>
+        </div>`
+      ).join("");
+    } else {
+      drop.innerHTML = '<div class="item" style="color:var(--text3)">No matches found</div>';
+    }
+    drop.classList.add("open");
+    S.highlighted = matches[0]?.lauId || null;
+    render();
+  });
+
+  drop.addEventListener("click", e => {
+    const item = e.target.closest(".item");
+    if (!item || !item.dataset.id) return;
+    const match = DATA.searchIdx.find(d => d.lauId === item.dataset.id);
+    if (match) {
+      input.value = match.name;
+      drop.classList.remove("open");
+      S.highlighted = match.lauId;
+      S.searchQ = match.name;
+      render();
+    }
+  });
+
+  document.addEventListener("click", e => {
+    if (!e.target.closest(".search-wrap")) drop.classList.remove("open");
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// UI CONTROLS
+// ═══════════════════════════════════════════════════════
+function setupUI() {
+  // Category
+  document.getElementById("cats").addEventListener("click", e => {
+    const btn = e.target.closest(".cat-btn");
+    if (!btn) return;
+    document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const cat = btn.dataset.cat;
+    S.category = cat;
+    // Pick first indicator in this category
+    const inds = INDICATORS[cat] || [];
+    S.indicator = inds[0]?.id || "gdp_per_capita_pps";
+
+    // Auto-switch layer to match category indicators
+    const targetLayer = inds[0]?.layer || "nuts3";
+    if (targetLayer !== S.layer) {
+      S.layer = targetLayer;
+      document.querySelectorAll(".layer-btn").forEach(b => {
+        b.classList.toggle("active", b.dataset.layer === targetLayer);
+      });
+    }
+
+    render();
+  });
+
+  // Layer
+  document.getElementById("layers").addEventListener("click", e => {
+    const btn = e.target.closest(".layer-btn");
+    if (!btn) return;
+    document.querySelectorAll(".layer-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    S.layer = btn.dataset.layer;
+
+    // Switch indicator/category to match layer
+    if (S.layer === "municipality") {
+      S.category = "demographics";
+      S.indicator = "pop_density";
+      document.querySelectorAll(".cat-btn").forEach(b => {
+        b.classList.toggle("active", b.dataset.cat === "demographics");
+      });
+    } else {
+      S.indicator = INDICATORS[S.category]?.[0]?.id || "gdp_per_capita_pps";
+    }
+    render();
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+window.addEventListener("resize", () => {
+  if (DATA) render();
+});
+
+async function init() {
+  try {
+    await load();
+    setupUI();
+    setupSearch();
+    render();
+    document.getElementById("loading").classList.add("done");
+  } catch (err) {
+    console.error(err);
+    document.getElementById("loading").innerHTML = `
+      <div style="color:#ef4444;text-align:center">
+        <p style="font-weight:700">Failed to load</p>
+        <p style="font-size:0.8rem;color:var(--text2);margin-top:4px">${err.message}</p>
+        <p style="font-size:0.7rem;color:var(--text3);margin-top:8px">
+          Ensure running via <code>python3 server.py</code> and data files exist in <code>data/</code>
+        </p>
+      </div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>

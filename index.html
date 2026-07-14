@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slovakia Data Map — Economy, Demographics, Education & Infrastructure | H Heuristics</title>
+<meta name="description" content="Interactive data map of Slovakia featuring 2,927 municipalities across 8 NUTS3 regions. Explore economy, demographics, education, and infrastructure indicators.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇸🇰</text></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="hheuristics-tokens.css">
+<link rel="stylesheet" href="hheuristics-components.css">
+
+<style>
+  /* ═══════════════════════════════════════════════════════
+     PAGE LAYOUT
+     ═══════════════════════════════════════════════════════ */
+  .page { max-width: var(--container-max); margin:0 auto; padding:0 var(--space-8); }
+  .page--wide { max-width: var(--container-wide); }
+
+  /* ═══════════════════════════════════════════════════════
+     MASTHEAD
+     ═══════════════════════════════════════════════════════ */
+  .masthead {
+    position: sticky; top:0; z-index: var(--z-sticky);
+    background: var(--header-bg); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 0 var(--space-8);
+  }
+  .masthead-inner {
+    max-width: var(--container-max); margin:0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    height: var(--header-height);
+  }
+  .masthead-brand {
+    display: flex; align-items: center; gap: var(--space-4);
+    text-decoration: none; color: var(--color-brand);
+  }
+  .masthead-brand .logo-icon {
+    font-size: 1.6rem; line-height: 1;
+  }
+  .masthead-brand .logo-text {
+    font-family: var(--font-display); font-size: var(--text-xl);
+    font-weight: var(--weight-bold); letter-spacing: var(--tracking-tight);
+  }
+  .masthead-brand .logo-text span {
+    color: var(--color-accent); font-weight: var(--weight-regular);
+  }
+  .masthead-nav {
+    display: flex; gap: var(--space-1); align-items: center;
+  }
+  .masthead-nav a {
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm); font-weight: var(--weight-medium);
+    color: var(--text-secondary); text-decoration: none;
+    transition: all var(--duration-fast) var(--ease-out);
+  }
+  .masthead-nav a:hover,
+  .masthead-nav a.active {
+    color: var(--color-brand); background: var(--hh-navy-50);
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     HERO
+     ═══════════════════════════════════════════════════════ */
+  .hero {
+    padding: var(--space-24) 0 var(--space-16);
+    text-align: center;
+    background: linear-gradient(180deg, var(--surface-bg) 0%, var(--surface-card) 100%);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .hero h1 {
+    font-size: var(--text-5xl); margin-bottom: var(--space-4);
+    letter-spacing: var(--tracking-tight);
+  }
+  .hero h1 em {
+    font-style: italic; color: var(--color-accent);
+    font-weight: var(--weight-regular);
+  }
+  .hero .subtitle {
+    font-size: var(--text-lg); color: var(--text-secondary);
+    max-width: 700px; margin: 0 auto var(--space-8);
+    line-height: var(--leading-relaxed);
+  }
+
+  /* KPI Row */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-4);
+    max-width: 900px; margin: var(--space-8) auto 0;
+  }
+  .kpi-card {
+    background: var(--surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    text-align: center;
+    box-shadow: var(--shadow-card);
+  }
+  .kpi-card .kpi-icon { font-size: 1.5rem; margin-bottom: var(--space-2); }
+  .kpi-card .kpi-value {
+    font-family: var(--font-display); font-size: var(--text-2xl);
+    font-weight: var(--weight-bold); color: var(--color-brand);
+    line-height: var(--leading-tight);
+  }
+  .kpi-card .kpi-label {
+    font-size: var(--text-xs); color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: var(--tracking-label);
+    margin-top: var(--space-1);
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     SECTION NAV (tabs)
+     ═══════════════════════════════════════════════════════ */
+  .section-nav {
+    position: sticky; top: var(--header-height); z-index: calc(var(--z-sticky) - 1);
+    background: var(--surface-elevated);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .section-nav-inner {
+    max-width: var(--container-max); margin:0 auto;
+    display: flex; gap: 0;
+    overflow-x: auto;
+  }
+  .section-nav a {
+    padding: var(--space-4) var(--space-6);
+    font-size: var(--text-sm); font-weight: var(--weight-semibold);
+    color: var(--text-muted); text-decoration: none;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all var(--duration-fast) var(--ease-out);
+  }
+  .section-nav a:hover { color: var(--text-primary); }
+  .section-nav a.active {
+    color: var(--color-brand);
+    border-bottom-color: var(--color-accent);
+  }
+  .section-nav .nav-icon { margin-right: var(--space-2); }
+
+  /* ═══════════════════════════════════════════════════════
+     CONTENT SECTIONS
+     ═══════════════════════════════════════════════════════ */
+  .content-section {
+    padding: var(--space-20) 0;
+  }
+  .content-section:nth-child(even) {
+    background: var(--surface-card);
+  }
+  .section-header {
+    margin-bottom: var(--space-10);
+  }
+  .section-header .section-eyebrow {
+    font-family: var(--font-mono); font-size: var(--text-xs);
+    color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: var(--tracking-mono); margin-bottom: var(--space-2);
+  }
+  .section-header h2 {
+    font-size: var(--text-3xl); margin-bottom: var(--space-3);
+  }
+  .section-header h2 .accent-bar {
+    display: inline-block; width: 3px; height: 0.9em;
+    background: var(--color-accent); margin-right: var(--space-3);
+    vertical-align: middle; border-radius: 2px;
+  }
+  .section-header .section-desc {
+    font-size: var(--text-lg); color: var(--text-secondary);
+    max-width: 650px; line-height: var(--leading-relaxed);
+  }
+
+  /* Two-column layout */
+  .section-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-10);
+    align-items: start;
+  }
+  .section-grid--wide-left { grid-template-columns: 1.2fr 0.8fr; }
+
+  /* Narrative prose */
+  .prose { line-height: var(--leading-relaxed); color: var(--text-secondary); }
+  .prose p { margin-bottom: var(--space-4); }
+  .prose strong { color: var(--text-primary); font-weight: var(--weight-semibold); }
+  .prose .stat-callout {
+    font-family: var(--font-display); font-size: var(--text-2xl);
+    font-weight: var(--weight-bold); color: var(--color-brand);
+    line-height: var(--leading-tight); margin: var(--space-6) 0 var(--space-2);
+  }
+  .prose .stat-callout em {
+    font-style: italic; color: var(--color-accent);
+    font-weight: var(--weight-regular);
+  }
+
+  /* Region highlight cards */
+  .region-cards {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-4);
+  }
+  .region-card {
+    background: var(--surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-left: var(--border-width-accent) solid var(--color-accent);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    padding: var(--space-4) var(--space-5);
+    box-shadow: var(--shadow-card);
+  }
+  .region-card h5 {
+    font-family: var(--font-body); font-size: var(--text-sm);
+    font-weight: var(--weight-semibold); color: var(--text-primary);
+    margin-bottom: var(--space-2);
+  }
+  .region-card .stat {
+    font-size: var(--text-xs); color: var(--text-muted);
+  }
+  .region-card .stat strong {
+    color: var(--color-brand); font-size: var(--text-base);
+    font-family: var(--font-mono);
+  }
+
+  /* Data table */
+  .data-table-wrap {
+    overflow-x: auto; border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+  }
+  table.data-table {
+    width: 100%; border-collapse: collapse;
+    font-size: var(--text-sm); line-height: var(--leading-normal);
+  }
+  table.data-table thead th {
+    background: var(--color-brand); color: var(--text-inverse);
+    padding: var(--space-3) var(--space-4); text-align: left;
+    font-weight: var(--weight-semibold); font-size: var(--text-xs);
+    text-transform: uppercase; letter-spacing: var(--tracking-label);
+    white-space: nowrap;
+  }
+  table.data-table tbody td {
+    padding: var(--space-2) var(--space-4);
+    border-bottom: 1px solid var(--border-subtle);
+    white-space: nowrap;
+  }
+  table.data-table tbody tr:hover { background: var(--hh-navy-50); }
+  table.data-table tbody td:first-child { font-weight: var(--weight-semibold); color: var(--text-primary); }
+  table.data-table .bar-cell {
+    position: relative;
+  }
+  table.data-table .bar {
+    position: absolute; left:0; top:0; bottom:0;
+    background: oklch(0.63 0.11 82 / 0.15);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     MAP SECTION
+     ═══════════════════════════════════════════════════════ */
+  .map-section {
+    background: var(--surface-dark);
+    padding: var(--space-16) 0;
+    color: var(--text-inverse);
+  }
+  .map-section .section-header h2 { color: var(--text-inverse); }
+  .map-section .section-header .section-desc { color: var(--hh-navy-100); }
+  .map-section .section-header .section-eyebrow { color: var(--hh-navy-300); }
+  .map-frame-wrap {
+    background: var(--surface-dark-card);
+    border: 1px solid var(--hh-navy-600);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-elevated);
+  }
+  .map-frame-wrap iframe {
+    width: 100%; height: 620px; border: none; display: block;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     FOOTER
+     ═══════════════════════════════════════════════════════ */
+  .site-footer {
+    background: var(--footer-bg); color: var(--footer-text);
+    padding: var(--space-16) 0 var(--space-8);
+  }
+  .footer-grid {
+    display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: var(--space-10); margin-bottom: var(--space-12);
+  }
+  .site-footer h6 {
+    color: var(--text-inverse); font-family: var(--font-body);
+    font-size: var(--text-xs); letter-spacing: var(--tracking-label);
+    margin-bottom: var(--space-4);
+  }
+  .site-footer p, .site-footer li {
+    font-size: var(--text-sm); color: var(--footer-text-muted);
+    line-height: var(--leading-relaxed);
+  }
+  .site-footer a {
+    color: var(--color-accent); text-decoration: none;
+  }
+  .site-footer a:hover { text-decoration: underline; }
+  .site-footer ul { list-style: none; padding:0; }
+  .site-footer ul li { margin-bottom: var(--space-2); }
+  .footer-bottom {
+    border-top: 1px solid var(--hh-navy-700);
+    padding-top: var(--space-6); text-align: center;
+    font-size: var(--text-xs); color: var(--footer-text-muted);
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     RESPONSIVE
+     ═══════════════════════════════════════════════════════ */
+  @media (max-width: 1024px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .section-grid, .section-grid--wide-left { grid-template-columns: 1fr; }
+    .region-cards { grid-template-columns: 1fr; }
+    .footer-grid { grid-template-columns: 1fr 1fr; }
+    .hero h1 { font-size: var(--text-3xl); }
+  }
+  @media (max-width: 640px) {
+    .kpi-row { grid-template-columns: 1fr; }
+    .masthead-nav { display: none; }
+    .section-nav a { padding: var(--space-3) var(--space-4); font-size: var(--text-xs); }
+    .map-frame-wrap iframe { height: 450px; }
+    .footer-grid { grid-template-columns: 1fr; }
+    .hero { padding: var(--space-12) 0 var(--space-8); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     MASTHEAD
+     ═══════════════════════════════════════════════════════ -->
+<header class="masthead">
+  <div class="masthead-inner">
+    <a href="#" class="masthead-brand">
+      <span class="logo-icon">◈</span>
+      <span class="logo-text">H Heuristics <span>× Slovakia</span></span>
+    </a>
+    <nav class="masthead-nav">
+      <a href="https://hheuristics.com" target="_blank" rel="noopener">hheuristics.com</a>
+      <a href="https://hheuristics.substack.com" target="_blank" rel="noopener">Substack</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════
+     HERO
+     ═══════════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="page">
+    <h1>Slovakia <em>Data Map</em></h1>
+    <p class="subtitle">
+      An interactive exploration of 2,927 municipalities across 8 regions — 
+      tracing the geography of economic development, demographic change, 
+      educational attainment, and infrastructure connectivity in the heart of Europe.
+    </p>
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-icon">🏘️</div>
+        <div class="kpi-value">2,927</div>
+        <div class="kpi-label">Municipalities</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">🗺️</div>
+        <div class="kpi-value">8</div>
+        <div class="kpi-label">NUTS3 Regions</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">👥</div>
+        <div class="kpi-value">5.4M</div>
+        <div class="kpi-label">Population (2024)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">📊</div>
+        <div class="kpi-value">75 PPS</div>
+        <div class="kpi-label">GDP/capita (EU27=100)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECTION NAV
+     ═══════════════════════════════════════════════════════ -->
+<nav class="section-nav" id="sectionNav">
+  <div class="section-nav-inner page">
+    <a href="#overview" class="active"><span class="nav-icon">📋</span> Overview</a>
+    <a href="#economy"><span class="nav-icon">💰</span> Economy</a>
+    <a href="#demographics"><span class="nav-icon">👥</span> Demographics</a>
+    <a href="#education"><span class="nav-icon">🎓</span> Education & Innovation</a>
+    <a href="#infrastructure"><span class="nav-icon">🏗️</span> Infrastructure & Connectivity</a>
+    <a href="#map"><span class="nav-icon">🗺️</span> Interactive Map</a>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════
+     OVERVIEW
+     ═══════════════════════════════════════════════════════ -->
+<section id="overview" class="content-section">
+  <div class="page">
+    <div class="section-header">
+      <div class="section-eyebrow">Section 01</div>
+      <h2><span class="accent-bar"></span>Slovakia at a Glance</h2>
+      <p class="section-desc">
+        A Central European nation of 5.4 million, Slovakia sits at the crossroads of the 
+        continent — bordered by Czechia, Austria, Hungary, Ukraine, and Poland. Since joining 
+        the EU in 2004 and adopting the euro in 2009, it has experienced rapid economic 
+        convergence, yet deep regional disparities persist.
+      </p>
+    </div>
+    <div class="section-grid">
+      <div class="prose">
+        <p>
+          Slovakia's development story is one of <strong>two speeds</strong>. Bratislava, the capital 
+          and home to 730,000 people in its broader region, ranks among the <strong>wealthiest 
+          regions in Central Europe</strong> with GDP per capita at 153% of the EU average. Its 
+          proximity to Vienna (60 km) has transformed it into a financial, automotive, and 
+          technology hub.
+        </p>
+        <p>
+          Yet travel east — across the Low Tatras, into the valleys of Prešov and Košice — and 
+          the picture shifts dramatically. Here GDP per capita falls to <strong>46% of the EU 
+          average</strong>, employment rates drop, and infrastructure thins. This east-west 
+          divergence is the defining economic geography of modern Slovakia.
+        </p>
+        <p>
+          The country's 2,927 municipalities range from Petržalka, a Bratislava borough of 
+          112,000 — larger than many Slovak cities — to dozens of villages with fewer than 
+          50 residents. Understanding this granular landscape is the purpose of the Slovakia 
+          Data Map.
+        </p>
+        <div class="stat-callout">2,927 <em>municipalities</em></div>
+        <p>across <strong>49,026 km²</strong> of territory, from Danubian lowlands to High Tatra peaks.</p>
+      </div>
+      <div>
+        <div class="region-cards">
+          <div class="region-card">
+            <h5>🇸🇰 Bratislavský kraj</h5>
+            <div class="stat">GDP/capita: <strong>153</strong> PPS</div>
+            <div class="stat">Employment: <strong>78.7%</strong></div>
+            <div class="stat">Population: <strong>736K</strong></div>
+          </div>
+          <div class="region-card">
+            <h5>🇸🇰 Košický kraj</h5>
+            <div class="stat">GDP/capita: <strong>62</strong> PPS</div>
+            <div class="stat">Employment: <strong>66.3%</strong></div>
+            <div class="stat">Population: <strong>779K</strong></div>
+          </div>
+          <div class="region-card">
+            <h5>🇸🇰 Prešovský kraj</h5>
+            <div class="stat">GDP/capita: <strong>46</strong> PPS</div>
+            <div class="stat">Employment: <strong>66.3%</strong></div>
+            <div class="stat">Population: <strong>810K</strong></div>
+          </div>
+          <div class="region-card">
+            <h5>🇸🇰 Žilinský kraj</h5>
+            <div class="stat">GDP/capita: <strong>67</strong> PPS</div>
+            <div class="stat">Employment: <strong>73.6%</strong></div>
+            <div class="stat">Population: <strong>686K</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     ECONOMY
+     ═══════════════════════════════════════════════════════ -->
+<section id="economy" class="content-section">
+  <div class="page">
+    <div class="section-header">
+      <div class="section-eyebrow">Section 02</div>
+      <h2><span class="accent-bar"></span>Economy — Two Speeds, One Country</h2>
+      <p class="section-desc">
+        GDP per capita, employment rates, and wage data reveal a stark west-to-east gradient 
+        in economic performance. Bratislava's economy is comparable to Vienna or Munich; 
+        Prešov's is closer to rural Romania.
+      </p>
+    </div>
+    <div class="section-grid section-grid--wide-left">
+      <div class="prose">
+        <p>
+          The <strong>Bratislava region</strong> accounts for approximately <strong>28% of national GDP</strong> 
+          while housing only 14% of the population. Its economy is anchored by financial services, 
+          technology (including the ESET cybersecurity hub), and the Volkswagen auto plant — one of 
+          the largest employers in the country.
+        </p>
+        <p>
+          The <strong>automotive industry</strong> is Slovakia's economic backbone. With four major 
+          plants — Volkswagen (Bratislava), Kia (Žilina), Stellantis (Trnava), and Jaguar Land Rover 
+          (Nitra) — Slovakia produces over <strong>1 million cars annually</strong>, making it the 
+          world's largest per-capita car producer. This industrial base drives employment in the 
+          western regions but has limited reach into the east.
+        </p>
+        <p>
+          The <strong>eastern regions</strong> (Prešov and Košice) face structural challenges: 
+          lower foreign investment, brain drain to Bratislava and abroad, and reliance on lower 
+          value-added manufacturing and agriculture. The <strong>Košice IT Valley</strong> initiative 
+          aims to bridge this gap, but convergence is slow.
+        </p>
+        <div class="stat-callout">153 → 46 <em>PPS gradient</em></div>
+        <p>Bratislava (153% of EU average) to Prešov (46%) — a 3.3× gap in GDP per capita.</p>
+      </div>
+      <div>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>Region</th><th>GDP/cap</th><th>vs EU27</th><th>Emp. Rate</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Bratislavský</td><td class="bar-cell"><span class="bar" style="width:100%"></span>153</td><td>+53%</td><td>78.7%</td></tr>
+              <tr><td>Trnavský</td><td class="bar-cell"><span class="bar" style="width:53.6%"></span>82</td><td>-18%</td><td>74.2%</td></tr>
+              <tr><td>Nitriansky</td><td class="bar-cell"><span class="bar" style="width:44.4%"></span>68</td><td>-32%</td><td>74.2%</td></tr>
+              <tr><td>Žilinský</td><td class="bar-cell"><span class="bar" style="width:43.8%"></span>67</td><td>-33%</td><td>73.6%</td></tr>
+              <tr><td>Košický</td><td class="bar-cell"><span class="bar" style="width:40.5%"></span>62</td><td>-38%</td><td>66.3%</td></tr>
+              <tr><td>Trenčiansky</td><td class="bar-cell"><span class="bar" style="width:39.9%"></span>61</td><td>-39%</td><td>74.2%</td></tr>
+              <tr><td>Banskobystrický</td><td class="bar-cell"><span class="bar" style="width:37.3%"></span>57</td><td>-43%</td><td>73.6%</td></tr>
+              <tr><td>Prešovský</td><td class="bar-cell"><span class="bar" style="width:30.1%"></span>46</td><td>-54%</td><td>66.3%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     DEMOGRAPHICS
+     ═══════════════════════════════════════════════════════ -->
+<section id="demographics" class="content-section">
+  <div class="page">
+    <div class="section-header">
+      <div class="section-eyebrow">Section 03</div>
+      <h2><span class="accent-bar"></span>Demographics — Youth in the East, Ageing in the Centre</h2>
+      <p class="section-desc">
+        Population distribution, age structure, and migration patterns reveal a country 
+        where the young cluster in the east while Bratislava absorbs the ambitious.
+      </p>
+    </div>
+    <div class="section-grid">
+      <div class="prose">
+        <p>
+          Slovakia's <strong>5.4 million</strong> people are distributed unevenly across the 
+          landscape. The <strong>Bratislava region</strong> has the highest population density 
+          (359/km²), while Banskobystrický kraj, the largest region by area, has large 
+          expanses of mountainous, sparsely populated terrain.
+        </p>
+        <p>
+          The age structure tells a revealing story. <strong>Prešovský kraj</strong>, the poorest 
+          region, has the youngest population — <strong>18.3% under 15</strong> — reflecting higher 
+          birth rates among the region's significant Roma minority. Meanwhile, 
+          <strong>Trenčiansky kraj</strong> has the oldest population, with <strong>21.0% over 65</strong>, 
+          as young workers have migrated westward for opportunity.
+        </p>
+        <p>
+          <strong>Bratislava</strong> sits in the middle demographically: it attracts young, 
+          educated workers from across the country, offsetting the capital's low birth rate. 
+          Its tertiary education attainment (54.8%) is more than double the national average, 
+          reflecting its role as a magnet for human capital.
+        </p>
+        <div class="stat-callout">18.3% <em>youth</em> · 21.0% <em>elderly</em></div>
+        <p>The age spectrum from Prešov (youngest) to Trenčín (oldest) spans a 4.5 percentage point gap in elderly share.</p>
+      </div>
+      <div>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>Region</th><th>Population</th><th>Youth 0–14</th><th>Elderly 65+</th><th>Density</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Prešovský</td><td>810,008</td><td>18.3%</td><td>16.5%</td><td>90/km²</td></tr>
+              <tr><td>Košický</td><td>778,799</td><td>17.2%</td><td>17.5%</td><td>115/km²</td></tr>
+              <tr><td>Bratislavský</td><td>736,385</td><td>16.7%</td><td>18.7%</td><td>359/km²</td></tr>
+              <tr><td>Žilinský</td><td>686,063</td><td>15.7%</td><td>18.1%</td><td>101/km²</td></tr>
+              <tr><td>Nitriansky</td><td>665,600</td><td>13.7%</td><td>20.6%</td><td>105/km²</td></tr>
+              <tr><td>Banskobystrický</td><td>611,124</td><td>14.7%</td><td>19.9%</td><td>65/km²</td></tr>
+              <tr><td>Trnavský</td><td>565,900</td><td>14.7%</td><td>19.3%</td><td>136/km²</td></tr>
+              <tr><td>Trenčiansky</td><td>565,572</td><td>14.0%</td><td>21.0%</td><td>126/km²</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     EDUCATION
+     ═══════════════════════════════════════════════════════ -->
+<section id="education" class="content-section">
+  <div class="page">
+    <div class="section-header">
+      <div class="section-eyebrow">Section 04</div>
+      <h2><span class="accent-bar"></span>Education & Innovation — The Bratislava Effect</h2>
+      <p class="section-desc">
+        Tertiary education attainment and innovation capacity are heavily concentrated in 
+        the capital region. Bridging the knowledge gap is central to Slovakia's long-term 
+        convergence strategy.
+      </p>
+    </div>
+    <div class="section-grid section-grid--wide-left">
+      <div class="prose">
+        <p>
+          <strong>Bratislavský kraj</strong> stands alone in educational attainment. With 
+          <strong>54.8% of 25–64 year-olds</strong> holding tertiary qualifications, it exceeds the 
+          EU average and rivals Scandinavian capitals. This is the engine room of Slovakia's 
+          knowledge economy — home to Comenius University, the Slovak University of Technology, 
+          and a growing tech startup ecosystem.
+        </p>
+        <p>
+          The other three NUTS2 regions — Západné Slovensko (West), Stredné Slovensko (Centre), 
+          and Východné Slovensko (East) — cluster tightly between <strong>25.0% and 26.7%</strong> 
+          tertiary attainment. This 2× gap between Bratislava and the rest is wider than the 
+          economic gap and represents a structural barrier to convergence.
+        </p>
+        <p>
+          Key universities outside Bratislava — <strong>Košice Technical University</strong>, 
+          <strong>University of Žilina</strong>, and <strong>Matej Bel University</strong> in Banská Bystrica — 
+          serve as regional anchors, but retention of graduates remains a challenge. The 
+          <strong>Košice IT Valley</strong> cluster, anchored by T-Systems and AT&T, represents the 
+          most promising effort to build knowledge-economy capacity in the east.
+        </p>
+        <div class="stat-callout">2.2× <em>education gap</em></div>
+        <p>Bratislava (54.8%) vs. the rest of Slovakia (25.0–26.7%) in tertiary education attainment.</p>
+      </div>
+      <div>
+        <div class="region-cards">
+          <div class="region-card">
+            <h5>🎓 Bratislavský kraj</h5>
+            <div class="stat">Tertiary Education: <strong>54.8%</strong></div>
+            <div class="stat">Key institutions: Comenius Univ., STU, EUBA</div>
+            <div class="stat">Tech cluster: Bratislava Startup Hub, ESET</div>
+          </div>
+          <div class="region-card">
+            <h5>🎓 Východné Slovensko</h5>
+            <div class="stat">Tertiary Education: <strong>26.7%</strong></div>
+            <div class="stat">Key institutions: TU Košice, UPJŠ, Prešov Univ.</div>
+            <div class="stat">Tech cluster: Košice IT Valley</div>
+          </div>
+          <div class="region-card">
+            <h5>🎓 Stredné Slovensko</h5>
+            <div class="stat">Tertiary Education: <strong>25.8%</strong></div>
+            <div class="stat">Key institutions: Matej Bel Univ., Žilina Univ.</div>
+            <div class="stat">R&D focus: Automotive engineering, forestry</div>
+          </div>
+          <div class="region-card">
+            <h5>🎓 Západné Slovensko</h5>
+            <div class="stat">Tertiary Education: <strong>25.0%</strong></div>
+            <div class="stat">Key institutions: UCM Trnava, Trenčín Univ.</div>
+            <div class="stat">R&D links: Automotive supply chain innovation</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     INFRASTRUCTURE
+     ═══════════════════════════════════════════════════════ -->
+<section id="infrastructure" class="content-section">
+  <div class="page">
+    <div class="section-header">
+      <div class="section-eyebrow">Section 05</div>
+      <h2><span class="accent-bar"></span>Infrastructure & Connectivity — Bridging the Divide</h2>
+      <p class="section-desc">
+        Broadband penetration, highway networks, and rail connectivity shape economic 
+        opportunity. Slovakia's infrastructure map tracks closely with its development gradient.
+      </p>
+    </div>
+    <div class="section-grid">
+      <div class="prose">
+        <p>
+          <strong>Broadband penetration</strong> follows the familiar pattern: Bratislavský kraj leads at 
+          <strong>96.1%</strong> of households connected, while Východné Slovensko trails at 
+          <strong>87.0%</strong>. The 9-percentage-point gap, while notable, is narrower than the 
+          economic or educational divides — reflecting significant EU-funded investment in 
+          digital infrastructure across less-developed regions.
+        </p>
+        <p>
+          Slovakia's <strong>highway network</strong> is heavily concentrated along the east-west 
+          D1 motorway corridor connecting Bratislava to Košice via Žilina. The completion of 
+          the D1 in recent years has been the country's single most transformative 
+          infrastructure project, reducing Bratislava–Košice travel time significantly. 
+          However, north-south connections remain underdeveloped.
+        </p>
+        <p>
+          <strong>Rail connectivity</strong> is strongest in the western corridor (Bratislava–Trnava–Žilina) 
+          with electrified, double-track mainlines. The eastern regions have lower service 
+          frequency and more single-track sections. <strong>Bratislava Airport</strong> (BTS) serves 
+          primarily European destinations, with Vienna International Airport (VIE, 50 km away) 
+          functioning as Slovakia's de facto long-haul hub.
+        </p>
+        <div class="stat-callout">96.1% → 87.0% <em>broadband gradient</em></div>
+        <p>Household broadband penetration ranges from 87% (East) to 96% (Bratislava).</p>
+      </div>
+      <div>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>NUTS2 Region</th><th>Broadband</th><th>Tertiary Edu</th><th>Employment</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Bratislavský kraj</td><td>96.1%</td><td>54.8%</td><td>78.7%</td></tr>
+              <tr><td>Stredné Slovensko</td><td>90.5%</td><td>25.8%</td><td>73.6%</td></tr>
+              <tr><td>Západné Slovensko</td><td>89.4%</td><td>25.0%</td><td>74.2%</td></tr>
+              <tr><td>Východné Slovensko</td><td>87.0%</td><td>26.7%</td><td>66.3%</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:var(--space-8)">
+          <div class="region-card">
+            <h5>🏗️ Key Infrastructure Projects</h5>
+            <div class="stat">D1 Motorway: Bratislava–Košice <strong>completed</strong></div>
+            <div class="stat">D4/R7 Bratislava Bypass: <strong>operational</strong></div>
+            <div class="stat">Rail corridor upgrades: <strong>EU TEN-T funded</strong></div>
+            <div class="stat">Rural broadband: <strong>EU Cohesion Policy 2021–2027</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     INTERACTIVE MAP
+     ═══════════════════════════════════════════════════════ -->
+<section id="map" class="map-section">
+  <div class="page--wide">
+    <div class="section-header">
+      <div class="section-eyebrow">Interactive Tool</div>
+      <h2>Explore the Data</h2>
+      <p class="section-desc">
+        Toggle between municipality and regional views. Switch categories to explore 
+        economy, demographics, education, and infrastructure indicators. Search for any 
+        of Slovakia's 2,927 municipalities by name.
+      </p>
+    </div>
+    <div class="map-frame-wrap">
+      <iframe src="map.html" title="Slovakia Interactive Map" loading="lazy"
+              sandbox="allow-scripts allow-same-origin"></iframe>
+    </div>
+    <p style="text-align:center; font-size:var(--text-xs); color:var(--hh-navy-300); margin-top:var(--space-4);">
+      Data: Eurostat GISCO 2024 boundaries · Eurostat API · H Heuristics analysis
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     FOOTER
+     ═══════════════════════════════════════════════════════ -->
+<footer class="site-footer">
+  <div class="page">
+    <div class="footer-grid">
+      <div>
+        <h6>H Heuristics</h6>
+        <p>
+          Market research, economic development consulting, and data intelligence. 
+          Based in Nottingham, UK. Specializing in regional economic analysis, 
+          development economics, and interactive data visualization.
+        </p>
+      </div>
+      <div>
+        <h6>Navigate</h6>
+        <ul>
+          <li><a href="#overview">Overview</a></li>
+          <li><a href="#economy">Economy</a></li>
+          <li><a href="#demographics">Demographics</a></li>
+          <li><a href="#education">Education & Innovation</a></li>
+          <li><a href="#infrastructure">Infrastructure</a></li>
+          <li><a href="#map">Interactive Map</a></li>
+        </ul>
+      </div>
+      <div>
+        <h6>Links</h6>
+        <ul>
+          <li><a href="https://hheuristics.com" target="_blank" rel="noopener">hheuristics.com</a></li>
+          <li><a href="https://hheuristics.substack.com" target="_blank" rel="noopener">Substack</a></li>
+          <li><a href="https://github.com/Hunterhghs/Slovakia-Data-Map" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+      <div>
+        <h6>Data Sources</h6>
+        <ul>
+          <li><a href="https://ec.europa.eu/eurostat" target="_blank" rel="noopener">Eurostat</a></li>
+          <li><a href="https://gisco-services.ec.europa.eu" target="_blank" rel="noopener">Eurostat GISCO</a></li>
+          <li><a href="https://www.scitanie.sk/en" target="_blank" rel="noopener">ŠÚSR Census 2021</a></li>
+          <li><a href="https://data.statistics.sk/" target="_blank" rel="noopener">STATdat</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      © 2025 H Heuristics. All rights reserved. Data sourced from Eurostat under 
+      <a href="https://ec.europa.eu/eurostat/web/main/data/legal-notice" target="_blank" rel="noopener">CC BY 4.0</a>. 
+      Administrative boundaries: © EuroGeographics.
+    </div>
+  </div>
+</footer>
+
+<!-- ═══════════════════════════════════════════════════════
+     ACTIVE NAV HIGHLIGHTING
+     ═══════════════════════════════════════════════════════ -->
+<script>
+  // Highlight active section nav on scroll
+  const sections = document.querySelectorAll('.content-section, .map-section');
+  const navLinks = document.querySelectorAll('.section-nav a');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.getAttribute('id');
+        navLinks.forEach(link => {
+          link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+        });
+      }
+    });
+  }, { rootMargin: '-40% 0px -55% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+
+  // Smooth scroll for nav links
+  document.querySelectorAll('.section-nav a').forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(link.getAttribute('href'));
+      if (target) {
+        const offset = 140; // masthead + nav height
+        const top = target.getBoundingClientRect().top + window.pageYOffset - offset;
+        window.scrollTo({ top, behavior: 'smooth' });
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
